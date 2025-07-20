@@ -2,12 +2,16 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import {BrrrCoin} from "../src/BrrrCoin.sol";
+import "../src/BrrrCoin.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract BrrrCoinTest is Test {
     BrrrCoin public brrr;
     address public user = address(0x1);
     address public recipient = address(0x2);
+    address whoever = address(0xBEEF);
+    error BridgeMockToken__TransferFailed();
+    error OwnableUnauthorizedAccount(address);
 
     function setUp() public {
         brrr = new BrrrCoin();
@@ -39,23 +43,26 @@ contract BrrrCoinTest is Test {
         assertEq(brrr.balanceOf(user), 500 ether);
     }
 
-    function testFailTransferWhenFailEnabled() public {
+    function test_RevertWhen_TransferAndFailEnabled() public {
+        vm.prank(address(this));
         brrr.setFailTranfers(true);
+        vm.expectRevert(BridgeMockToken__TransferFailed.selector);
         vm.prank(user);
         brrr.transfer(recipient, 1 ether);
     }
 
-    function testFailTransferFromWhenFailEnabled() public {
+    function test_RevertWhen_TransferFromAndFailEnabled() public {
         vm.prank(user);
         brrr.approve(address(this), 100 ether);
         brrr.setFailTranfers(true);
+        vm.expectRevert(BridgeMockToken__TransferFailed.selector);
         brrr.transferFrom(user, recipient, 1 ether);
     }
 
     function testOnlyOwnerCanSetFailTransfers() public {
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(user)));
         vm.prank(user);
+        // vm.prank(address(this));
         brrr.setFailTranfers(true);
     }
 }
-
